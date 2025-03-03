@@ -1,0 +1,5 @@
+ollama
+openai~=1.65.2
+phidata
+rich
+duckduckgo-search
