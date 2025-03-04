@@ -1,11 +1,15 @@
 from agno.agent import Agent
-from agno.models.openai import OpenAIChat
+from agno.models.ollama import Ollama
 from agno.tools.duckduckgo import DuckDuckGoTools
 
 
-model = OpenAIChat(base_url="http://localhost:11434/v1",
-                   api_key='ollama',
-                   id='qwen2.5:latest')
+#model = OpenAIChat(base_url="http://localhost:11434/v1",
+#                     api_key='ollama',
+#                     id="qwen2.5:latest")
+
+
+model = Ollama(host="localhost:11434",
+               id="qwen2.5:latest")
 
 
 agente = Agent(
