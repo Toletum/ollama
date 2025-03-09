@@ -8,13 +8,13 @@ from agno.models.ollama import Ollama
 
 
 model = Ollama(host="localhost:11434",
-               id="qwen2.5-coder:latest")
+               id="qwen2.5-coder:3b")
 
 agente = Agent(
     name="Programmer IA",
     model=model,
-    instructions=["You are a programmer in python."],
+    instructions=["You are a programmer in python. Only reply code"],
     show_tool_calls=True
 )
 
-agente.print_response("Create Fibonacci function?", markdown=True, stream=True)
+agente.print_response("Create only one Fibonacci function?", markdown=True, stream=True)
