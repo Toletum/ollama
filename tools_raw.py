@@ -113,12 +113,26 @@ TOOLS = [
 messages = [
     {
         'role': 'user',
-        'content': """what time is it now in Bilbao localtime, UTC time and latitude/longitude? 
-        Please, some info about the city""",
+        'content': """what time is it now in Bilbao localtime, UTC time and latitude/longitude?
+            Be brief, one or two lines at most.
+        """,
     } ]
+
+#  NO TOOLS
+print("---- NO TOOLS ----")
+response = ollama.chat(
+    model="llama3.1:latest",
+    messages=messages
+)
+
+print("---- RESPONSE ----")
+print(response['message']['content'])
+print("---- NO TOOLS ----")
 
 
 module = sys.modules[__name__]
+
+print("---- TOOLS ----")
 
 loop = 0
 while True: #  Until no tools to call
@@ -158,4 +172,6 @@ while True: #  Until no tools to call
 
 
 # The final response
+print("---- RESPONSE ----")
 print(response['message']['content'])
+print("---- TOOLS ----")
