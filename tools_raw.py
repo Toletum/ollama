@@ -1,7 +1,12 @@
 import datetime
 import sys
+import os
+import time
 from zoneinfo import ZoneInfo
 import uuid
+
+
+from functools import lru_cache
 
 import geocoder
 import ollama
@@ -9,23 +14,30 @@ import requests
 from pydantic import json
 
 
-def get_time(timezone: str) -> str:
+
+@lru_cache(maxsize=1024)
+def get_time(timezone: str) -> json:
     """Returns the current time in ISO 8601 format."""
     try:
-        zona = ZoneInfo(timezone)
-        now = datetime.datetime.now(zona)
+        tz = ZoneInfo(timezone)
+        now = datetime.datetime.now(tz)
     except Exception as ex:
-        now = datetime.datetime.utcnow()
-    return f"Current time: {now.strftime('%H:%M:%S')} {timezone}"
+        now = datetime.datetime.now(datetime.timezone.utc)
+    return {
+        'timezone': timezone,
+        'tz': repr(tz),
+        'time': now.strftime('%H:%M:%S')
+    }
 
 
+@lru_cache(maxsize=1024)
 def get_coor(city: str) -> json:
     """Return in json forma the coordinates for the city."""
 
     session = requests.Session()
     session.proxies.update({
-        "http": "http://de1app02903n-2.internal.vodafone.com:8080",
-        "https": "http://de1app02903n-2.internal.vodafone.com:8080",
+        "http": os.getenv("PROXY", None),
+        "https": os.getenv("PROXY", None),
     })
 
     session.headers.update({
@@ -47,18 +59,12 @@ def get_coor(city: str) -> json:
         }
 
 
-
-AVAILABLE_FUNCTIONS = {
-    'get_time': get_time,
-    'get_coor': get_coor
-}
-
 TOOLS = [
     {
         "type": "function",
         "function": {
             "name": "get_time",
-            "description": "Returns the current UTC time in ISO 8601 format.",
+            "description": "Return in json format current time in ISO 8601 format.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -94,13 +100,16 @@ TOOLS = [
 messages = [
     {
         'role': 'user',
-        'content': "what time is it now in Bilbao localtime and UTC time too and coordinates?",
+        'content': "what time is it now in Bilbao localtime, UTC time and latitude/longitude? Please, some info about the city",
     } ]
 
 
-modulo_actual = sys.modules[__name__]
+module = sys.modules[__name__]
 
+loop = 0
 while True:
+    loop += 1
+    print(f"Loop {loop}")
     response = ollama.chat(
         model="llama3.1:latest",
         messages=messages,
@@ -110,7 +119,7 @@ while True:
     messages.append(response['message'])
 
     if len(response['message'].get('tool_calls', [])) == 0:
-        print(response['message'])
+        print(response['message']['content'])
         break
 
 
@@ -118,14 +127,17 @@ while True:
         function_name = tool_call['function']['name']
         function_args = tool_call['function']['arguments']
         try:
-            function_call = getattr(modulo_actual, function_name)
+            print(f"Calling... '{function_name}' args: {function_args}")
+            function_call = getattr(module, function_name)
+            calling = time.time()
             function_response = function_call(**function_args)
+            round(time.time() - calling, 4)
             messages.append({
                 "role": "tool",
                 "content": str(function_response),
                 "tool_call_id": str(uuid.uuid4())
             })
-            print(f"tool: '{function_name}' args: {function_args} -> {str(function_response)}")
+            print(f"    REQUEST: {round(time.time() - calling, 4)}  DATA: {str(function_response)}")
         except Exception as ex:
             print(f"ERROR tool: '{function_name}' args: {function_args}")
             pass
